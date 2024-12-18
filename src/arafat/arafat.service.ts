@@ -31,7 +31,6 @@ export class ArafatService {
   }
 
   async loginUser(email: string, password: string) {
-    
     const user = await this.userRepository.findOne({ where: { email } });
     if (!user) {
       throw new Error('Invalid email or password');
@@ -41,10 +40,9 @@ export class ArafatService {
   
     if (user.password.startsWith('$2b$')) {
       passwordMatch = await bcrypt.compare(password, user.password);
-    } 
-    else{
+    } else {
       passwordMatch = user.password === password;
-
+  
       if (passwordMatch) {
         const hashedPassword = await bcrypt.hash(user.password, 10);
         user.password = hashedPassword;
@@ -56,11 +54,16 @@ export class ArafatService {
       throw new Error('Invalid email or password');
     }
   
-    const payload = { sub: user.userId, email: user.email };
+    const payload = { sub: user.userId, email: user.email, userType: user.userType };
+  
     const token = this.jwtService.sign(payload);
   
-    return { accessToken: token };
+    return {
+      accessToken: token,
+      user: user,
+    };
   }
+  
 
 
 
