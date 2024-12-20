@@ -1,10 +1,12 @@
 import { Injectable, Param } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Between, ILike, In, Repository } from 'typeorm';
+import { Between, ILike, In, Not, Repository } from 'typeorm';
 import { Chat, Product, Property, Sales, Ticket, User } from './arafat.entity';
 
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
+
+const tokenBlacklist = new Set<string>();
 
 @Injectable()
 export class ArafatService {
@@ -24,9 +26,16 @@ export class ArafatService {
   // ==========================================
 
   async registerUser(data: any) {
+
+    const user = await this.userRepository.findOne({ where: { email: data.email } });
+    if (user) {
+      return { message: 'Email already has an account' };
+    }
+    
     const salt = await bcrypt.genSalt();
     const hashedPassword = await bcrypt.hash(data.password, salt);
     data.password = hashedPassword;
+  
     return this.userRepository.save(data);
   }
 
@@ -35,33 +44,49 @@ export class ArafatService {
     if (!user) {
       throw new Error('Invalid email or password');
     }
-  
     let passwordMatch = false;
-  
     if (user.password.startsWith('$2b$')) {
       passwordMatch = await bcrypt.compare(password, user.password);
     } else {
       passwordMatch = user.password === password;
-  
       if (passwordMatch) {
         const hashedPassword = await bcrypt.hash(user.password, 10);
         user.password = hashedPassword;
         await this.userRepository.save(user);
       }
     }
-  
     if (!passwordMatch) {
       throw new Error('Invalid email or password');
     }
-  
     const payload = { sub: user.userId, email: user.email, userType: user.userType };
-  
     const token = this.jwtService.sign(payload);
   
     return {
       accessToken: token,
       user: user,
     };
+  }
+
+  async blacklistToken(token: string) {
+    tokenBlacklist.add(token);
+    return { message: 'Token successfully blacklisted' };
+  }
+  isTokenBlacklisted(token: string): boolean {
+    return tokenBlacklist.has(token);
+  }
+
+  async getUserById(userId: number) {
+    try {
+      const user = await this.userRepository.findOne({
+        where: { userId },
+      });
+      if (!user) {
+        throw new Error('User not found');
+      }
+      return user;
+    } catch (error) {
+      throw new Error(`Error fetching user: ${error.message}`);
+    }
   }
   
 
@@ -71,14 +96,27 @@ export class ArafatService {
   // ============    chat    ==================
   // ==========================================
 
-  async createTicket(data: { userId: number }) {
-    const openTickets = await this.ticketRepository.find({
-      where: { userId: data.userId, status: 'open' },
-    });
-    if (openTickets.length >= 3) {
-      throw new Error('You cannot create more than 3 open tickets.');
+  async createTicket(userId: number) {
+    try{
+        
+      const openTickets = await this.ticketRepository.find({
+        where: { userId: userId, status: 'open' },
+      });
+
+      if (openTickets.length >= 3) {
+        throw new Error('You cannot create more than 3 open tickets.');
+      }
+
+      const newTicket = this.ticketRepository.create({
+        userId: userId,
+        status: 'open',
+        createdAt: new Date(),
+      });
+
+        return await this.ticketRepository.save(newTicket);
+    } catch (error) {
+        throw new Error(`Error creating ticket: ${error.message}`);
     }
-    return this.ticketRepository.save(data);
   }
 
   async userTickets(userId: number){
@@ -105,6 +143,21 @@ export class ArafatService {
     
     const new_d = Object.assign(row, data);
     return this.ticketRepository.save(new_d);
+  }
+
+  async sendMessage(userId,TicketId,message) {
+    try {
+      const newMessage = {
+        TicketId,
+        userId,
+        message,
+        timestamp: new Date(),
+      }
+  
+      return await this.chatRepository.save(newMessage);
+    } catch (error) {
+      throw new Error(`Failed to send message: ${error.message}`);
+    }
   }
 
   // ==========================================
@@ -173,7 +226,7 @@ export class ArafatService {
   // ==========================================
 
   getAllproperty(){
-    return this.propertyRepository.find();
+    return this.propertyRepository.find();//{where:{verifyStatus:"pending"}}
   }
 
   getproperty(id){
@@ -198,27 +251,36 @@ export class ArafatService {
   // ============    user    ==================
   // ==========================================
 
-  getAllUser(){
-    return this.userRepository.find();
-  }
-
-  
-  // async getAllUser(search?: string): Promise<User[]> {
-  //   if (!search) {
-  //     return this.userRepository.find();
-  //   }
-
-  //   return this.userRepository.find({
-  //     where: [
-  //       { userId: parseInt(search, 10) || 0 },
-  //       { email: ILike(`%${search}%`) },
-  //       { userName: ILike(`%${search}%`) },
-  //       { number: parseInt(search, 10) || 0 },
-  //     ],
-  //   });
+  // getAllUser(){
+  //   return this.userRepository.find();
   // }
 
-  adduser(data){
+  
+  async getUserbyserch(search?: string): Promise<User[]> {
+    if (!search) {
+      return this.userRepository.find({ where: { userType: Not('admin') } });//
+    }
+
+    return this.userRepository.find({
+      where: [
+        { userId: parseInt(search, 10) || 0 },
+        { email: ILike(`%${search}%`) },
+        { userName: ILike(`%${search}%`) },
+        { number: parseInt(search, 10) || 0 },
+      ],
+    });
+  }
+
+  async adduser(data){
+
+    const user = await this.userRepository.findOne({ where: { email: data.email } });
+    if (user) {
+      return { message: 'Email already has an account' };
+    }
+    const salt = await bcrypt.genSalt();
+    const hashedPassword = await bcrypt.hash(data.password, salt);
+    data.password = hashedPassword;
+
     return this.userRepository.save(data);
   }
 
@@ -226,14 +288,17 @@ export class ArafatService {
     return this.userRepository.findOne({where:{userId:id}});
   }
 
-  async updateuser(id, data){
-    const row = await this.userRepository.findOne({where:{userId : id}});
+  async findUserByEmail(email: string) {
+    return this.userRepository.findOne({ where: { email } });
+  }
 
-    if(!row)
-    {
+  async updateuser(id, data){
+    
+    const row = await this.userRepository.findOne({where:{userId : id}});
+    if(!row){
       return "User not found!";
     }
-    
+
     const new_d = Object.assign(row, data);
     return this.userRepository.save(new_d);
   }

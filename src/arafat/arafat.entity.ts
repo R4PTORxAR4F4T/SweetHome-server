@@ -31,9 +31,6 @@ import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn } from 'typeor
     @Column()
     userId: number;
 
-    @Column()
-    receiverId: number;
-
     @Column('text')
     message: string;
 
@@ -166,7 +163,7 @@ import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn } from 'typeor
     @Column({ nullable: true })
     address: string;
 
-    @Column({ nullable: true })
+    @Column()
     userType: string;
 
     @Column({ nullable: true })
