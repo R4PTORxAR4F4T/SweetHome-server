@@ -1,7 +1,8 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UnauthorizedException } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UnauthorizedException } from '@nestjs/common';
 import { ArafatService } from './arafat.service';
 import { UseGuards, Request } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { JwtAuthGuard } from 'src/jwt/jwt-auth.guard';
 
 @Controller('/control')
 export class ArafatController {
@@ -28,16 +29,11 @@ export class ArafatController {
         }
     }
 
-    @Post('/logout')
-    @UseGuards(AuthGuard('jwt'))
-    async logout(@Request() req) {
-        try {
-            const token = req.headers.authorization.split('.')[1];
-            await this.arafatService.blacklistToken(token);
-            return { message: 'Successfully logged out.' };
-        } catch (error) {
-            return { message: error.message };
-        }
+    @UseGuards(JwtAuthGuard)
+    @Post('logout')
+    async logout(@Req() req) {
+        const token = req.headers.authorization.split(' ')[1];
+        return this.arafatService.blacklistToken(token);
     }
   
     @Get('/protected')

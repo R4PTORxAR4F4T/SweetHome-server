@@ -6,8 +6,6 @@ import { Chat, Product, Property, Sales, Ticket, User } from './arafat.entity';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 
-const tokenBlacklist = new Set<string>();
-
 @Injectable()
 export class ArafatService {
 
@@ -67,13 +65,20 @@ export class ArafatService {
     };
   }
 
-  async blacklistToken(token: string) {
-    tokenBlacklist.add(token);
-    return { message: 'Token successfully blacklisted' };
+  private tokenBlacklist = [];
+
+  async blacklistToken(token) {
+    this.tokenBlacklist.push(token);
+    return {
+      message: 'Token successfully blacklisted',
+    };
   }
+
   isTokenBlacklisted(token: string): boolean {
-    return tokenBlacklist.has(token);
+    return this.tokenBlacklist.includes(token.trim());
   }
+  
+
 
   async getUserById(userId: number) {
     try {
