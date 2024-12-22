@@ -19,11 +19,38 @@ export class ArafatController {
             return { message: error.message };
         }
     }
-  
+
     @Post('/login')
     async login(@Body() body) {
         try {
             return await this.arafatService.loginUser(body.email, body.password);
+        } catch (error) {
+            return { message: error.message };
+        }
+    }
+
+    @Post('/sendotp')
+    async sendOtp(@Body() data: { email: string }) {
+        try {
+            return this.arafatService.sendOtpToUser(data.email);
+        } catch (error) {
+            return { message: error.message };
+        }
+    }
+
+    @Post('/verifyotp')
+    async verifyOtp(@Body() body: { email: string; otp: string }) {
+        try {
+            return this.arafatService.verifyOtp(body.email, body.otp);
+        }catch (error) {
+            return { message: error.message };
+        }
+    }
+
+    @Post('/resetpassword')
+    async resetPassword(@Body() body: { email: string; newPassword: string }) {
+        try {
+            return this.arafatService.resetPassword(body.email, body.newPassword);
         } catch (error) {
             return { message: error.message };
         }

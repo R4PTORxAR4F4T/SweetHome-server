@@ -167,7 +167,7 @@ import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn } from 'typeor
     userType: string;
 
     @Column({ nullable: true })
-    token: string;
+    otp: string;
 
     @CreateDateColumn()
     createdAt: Date;

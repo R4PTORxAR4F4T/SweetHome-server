@@ -2,12 +2,15 @@ import { Injectable, Param } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Between, ILike, In, Not, Repository } from 'typeorm';
 import { Chat, Product, Property, Sales, Ticket, User } from './arafat.entity';
-
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class ArafatService {
+
+  private otpStorage: Map<string, { otp: string; expiresAt: Date }> = new Map();
+  private verified: boolean;
+
 
   constructor(
     @InjectRepository(Ticket) private ticketRepository: Repository<Ticket>,
@@ -66,18 +69,89 @@ export class ArafatService {
   }
 
   private tokenBlacklist = [];
-
   async blacklistToken(token) {
     this.tokenBlacklist.push(token);
     return {
       message: 'Token successfully blacklisted',
     };
   }
-
   isTokenBlacklisted(token: string): boolean {
     return this.tokenBlacklist.includes(token.trim());
   }
   
+
+
+
+
+
+  
+  async sendOtpToUser(email: string) {
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // OTP expires in 5 minutes
+    this.otpStorage.set(email, { otp, expiresAt });
+  
+    try {
+      const row = await this.userRepository.findOne({ where: { email: email } });
+      if (!row) {
+        return "Request Declined: Account cannot be found.";
+      }
+      const data = { otp, expiresAt };
+      const newData = Object.assign(row, data);
+      await this.userRepository.save(newData);
+  
+      console.log(`OTP sent to ${email}: ${otp}`);
+      return { message: `OTP sent successfully to ${email}` };
+    } catch (error) {
+      console.error('Failed to send OTP:', error.message);
+      throw new Error('Failed to send OTP');
+    }
+  }
+  
+  async verifyOtp(email: string, otp: string) {
+    const storedOtpData = this.otpStorage.get(email);
+
+    if (!storedOtpData) {
+        return { verified: false, message: 'Invalid or expired OTP' };
+    }
+    const { otp: storedOtp, expiresAt } = storedOtpData;
+    if (new Date() > expiresAt) {
+        this.otpStorage.delete(email);
+        return { verified: false, message: 'OTP expired' };
+    }
+    if (storedOtp !== otp) {
+        return { verified: false, message: 'Invalid OTP' };
+    }
+
+    this.verified= true;
+    return { verified: true, message: 'OTP verified successfully. You may reset your password now.' };
+  }
+
+
+  async resetPassword(email: string, newPassword: string) {
+    const storedOtpData = this.otpStorage.get(email);
+    if (!this.verified) {
+        return { success: false, message: 'Password reset not allowed. Verify OTP first.' };
+    }
+    try {
+        const user = await this.userRepository.findOne({ where: { email } });
+        if (!user) {
+            return { success: false, message: 'User not found.' };
+        }
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        user.password = hashedPassword;
+        await this.userRepository.save(user);
+        this.otpStorage.delete(email);
+        return { success: true, message: 'Password reset successfully.' };
+    } catch (error) {
+        console.error('Failed to reset password:', error.message);
+        throw new Error('Failed to reset password');
+    }
+  }
+
+  
+
+
+
 
 
   async getUserById(userId: number) {
@@ -294,6 +368,7 @@ export class ArafatService {
   }
 
   async findUserByEmail(email: string) {
+    console.log(email);
     return this.userRepository.findOne({ where: { email } });
   }
 
