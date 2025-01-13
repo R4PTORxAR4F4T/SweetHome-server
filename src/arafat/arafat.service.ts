@@ -4,6 +4,9 @@ import { Between, ILike, In, Not, Repository } from 'typeorm';
 import { Chat, Product, Property, Sales, Ticket, User } from './arafat.entity';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
+import * as fs from 'fs/promises';
+import * as path from 'path';
+
 
 @Injectable()
 export class ArafatService {
@@ -385,5 +388,43 @@ export class ArafatService {
 
   deleteuser(id){
     return this.userRepository.delete(id);
+  }
+
+
+  // ==========================================
+  // ============    logs    ==================
+  // ==========================================
+  
+  async activitylog(): Promise<string> {
+    try {
+      const logDirPath = 'C:/Users/ASUS/AppData/Roaming/pgAdmin';
+      const files = await fs.readdir(logDirPath);
+  
+      const logFiles = files
+        .filter(file => file.startsWith('pgadmin4.log.'))
+        .sort();
+  
+      if (logFiles.length === 0) {
+        throw new Error('No log files found in the directory.');
+      }
+  
+      // Read all log files and concatenate their contents
+      const logContents = await Promise.all(
+        logFiles.map(file => fs.readFile(path.join(logDirPath, file), 'utf8'))
+      );
+  
+      const allLogs = logContents.join('\n'); // Combine all logs
+
+      // Extract only ERROR messages
+      const errorLogs:any = allLogs
+        .split('\n')
+        .filter(line => line.includes('ERROR')) // Keep only lines with "ERROR"
+        .map(line => line.trim()); // Remove unnecessary spaces
+
+      return errorLogs;
+    } catch (err) {
+      console.error('Error reading log files:', err.message);
+      throw new Error('Failed to read the activity logs. Please check the directory path or permissions.');
+    }
   }
 }

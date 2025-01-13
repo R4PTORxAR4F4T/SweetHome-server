@@ -307,4 +307,36 @@ export class ArafatController {
         return { message: error.message };
       }
     }
+
+
+    // ==========================================
+    // ============    logs    ==================
+    // ==========================================
+
+
+    @Get('/logs')
+    // @UseGuards(AuthGuard('jwt'))
+    async activitylog(@Request() req,@Query('search') search: any) {
+        try {
+            // if (req.user.userType !== 'admin') {
+            //     throw new Error('Access Denied : Admin access required to user this end point.');
+            // }
+            return await this.arafatService.activitylog();
+        } catch (error) {
+            return { message: error.message };
+        }
+    }
+
 }
+
+
+
+
+
+
+
+
+
+
+
+
