@@ -155,16 +155,17 @@ export class ArafatController {
     // ==========================================
   
     @Get('/overviewdata')
-    @UseGuards(AuthGuard('jwt'))
+    // @UseGuards(AuthGuard('jwt'))
     async overviewData(@Request() req) {
-        try {
-            if (req.user.userType !== 'admin') {
-                throw new Error('Access Denied : Admin access required to user this end point');
-            }
-            return await this.arafatService.overviewData();
-        } catch (error) {
-            return { message: error.message };
-        }
+        return await this.arafatService.overviewData();
+        // try {
+        //     if (req.user.userType !== 'admin') {
+        //         throw new Error('Access Denied : Admin access required to user this end point');
+        //     }
+        //     return await this.arafatService.overviewData();
+        // } catch (error) {
+        //     return { message: error.message };
+        // }
     }
   
     // ==========================================

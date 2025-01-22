@@ -305,7 +305,8 @@ export class ArafatService {
 
   // ==========================================
   // ==========   verify property    ==========
-  // ==========================================
+  // =================
+  // =========================
 
   getAllproperty(){
     return this.propertyRepository.find();//{where:{verifyStatus:"pending"}}

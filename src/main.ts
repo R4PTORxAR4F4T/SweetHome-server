@@ -11,6 +11,6 @@ async function bootstrap() {
     credentials: true,
     origin: 'http://localhost:3000', // Update to your frontend URL
   });
-  await app.listen(process.env.PORT ?? 3000);
+  await app.listen(process.env.PORT ?? 4000);
 }
 bootstrap();
