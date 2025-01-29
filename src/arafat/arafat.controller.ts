@@ -23,6 +23,7 @@ export class ArafatController {
     @Post('/login')
     async login(@Body() body) {
         try {
+            console.log(body.email, body.password)
             return await this.arafatService.loginUser(body.email, body.password);
         } catch (error) {
             return { message: error.message };

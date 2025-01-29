@@ -6,6 +6,7 @@ import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { Message } from 'twilio/lib/twiml/MessagingResponse';
 
 
 @Injectable()
@@ -39,8 +40,13 @@ export class ArafatService {
     const salt = await bcrypt.genSalt();
     const hashedPassword = await bcrypt.hash(data.password, salt);
     data.password = hashedPassword;
+    const message = "user created successful"
   
-    return this.userRepository.save(data);
+    this.userRepository.save(data);
+
+    return{
+      message: "User Created Successfully"
+    } 
   }
 
   async loginUser(email: string, password: string) {
@@ -62,10 +68,12 @@ export class ArafatService {
     if (!passwordMatch) {
       throw new Error('Invalid email or password');
     }
+    const message = "login Successful"
     const payload = { sub: user.userId, email: user.email, userType: user.userType };
     const token = this.jwtService.sign(payload);
   
     return {
+      message,
       accessToken: token,
       user: user,
     };
